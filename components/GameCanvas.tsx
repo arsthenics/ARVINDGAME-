@@ -1,5 +1,4 @@
-
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { 
   CANVAS_WIDTH, CANVAS_HEIGHT, PLAYER_RADIUS, BALL_RADIUS, 
   GOAL_SIZE, FRICTION, BOUNCE, PLAYER_SPEED, KICK_FORCE, Entity, Player 
@@ -8,18 +7,17 @@ import {
 interface GameCanvasProps {
   onGoal: (team: 'A' | 'B') => void;
   status: 'START' | 'PLAYING' | 'GOAL' | 'FINISHED';
+  isAIMode: boolean;
 }
 
-const GameCanvas: React.FC<GameCanvasProps> = ({ onGoal, status }) => {
+const GameCanvas: React.FC<GameCanvasProps> = ({ onGoal, status, isAIMode }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const requestRef = useRef<number>();
-  
-  // Input tracking
+  // Initializing with 0 to satisfy the expected argument requirement in strict TypeScript environments
+  const requestRef = useRef<number>(0);
   const keys = useRef<Record<string, boolean>>({});
 
-  // Game state in refs for physics consistency in the loop
   const p1 = useRef<Player>({
-    pos: { x: 100, y: CANVAS_HEIGHT / 2 },
+    pos: { x: 150, y: CANVAS_HEIGHT / 2 },
     vel: { x: 0, y: 0 },
     radius: PLAYER_RADIUS,
     color: '#3b82f6',
@@ -29,7 +27,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGoal, status }) => {
   });
 
   const p2 = useRef<Player>({
-    pos: { x: CANVAS_WIDTH - 100, y: CANVAS_HEIGHT / 2 },
+    pos: { x: CANVAS_WIDTH - 150, y: CANVAS_HEIGHT / 2 },
     vel: { x: 0, y: 0 },
     radius: PLAYER_RADIUS,
     color: '#ef4444',
@@ -46,59 +44,52 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGoal, status }) => {
   });
 
   const resetPositions = () => {
-    p1.current.pos = { x: 100, y: CANVAS_HEIGHT / 2 };
+    p1.current.pos = { x: 150, y: CANVAS_HEIGHT / 2 };
     p1.current.vel = { x: 0, y: 0 };
-    p2.current.pos = { x: CANVAS_WIDTH - 100, y: CANVAS_HEIGHT / 2 };
+    p2.current.pos = { x: CANVAS_WIDTH - 150, y: CANVAS_HEIGHT / 2 };
     p2.current.vel = { x: 0, y: 0 };
     ball.current.pos = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 };
     ball.current.vel = { x: 0, y: 0 };
   };
 
   useEffect(() => {
-    if (status === 'GOAL' || status === 'START' || status === 'FINISHED') {
-      resetPositions();
-    }
+    if (status !== 'PLAYING') resetPositions();
   }, [status]);
 
-  const handleKeyDown = (e: KeyboardEvent) => { keys.current[e.code] = true; };
-  const handleKeyUp = (e: KeyboardEvent) => { keys.current[e.code] = false; };
-
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    const down = (e: KeyboardEvent) => { keys.current[e.code] = true; };
+    const up = (e: KeyboardEvent) => { keys.current[e.code] = false; };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
     };
   }, []);
 
   const resolveCollision = (e1: Entity, e2: Entity) => {
     const dx = e2.pos.x - e1.pos.x;
     const dy = e2.pos.y - e1.pos.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const minDistance = e1.radius + e2.radius;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const minDist = e1.radius + e2.radius;
 
-    if (distance < minDistance) {
-      // Resolve overlap
-      const overlap = minDistance - distance;
-      const nx = dx / distance;
-      const ny = dy / distance;
+    if (dist < minDist) {
+      const overlap = minDist - dist;
+      const nx = dx / dist;
+      const ny = dy / dist;
       
       e1.pos.x -= nx * overlap / 2;
       e1.pos.y -= ny * overlap / 2;
       e2.pos.x += nx * overlap / 2;
       e2.pos.y += ny * overlap / 2;
 
-      // Elastic collision reflection
-      const relativeVelocityX = e1.vel.x - e2.vel.x;
-      const relativeVelocityY = e1.vel.y - e2.vel.y;
-      const velocityAlongNormal = relativeVelocityX * nx + relativeVelocityY * ny;
+      const relVelX = e1.vel.x - e2.vel.x;
+      const relVelY = e1.vel.y - e2.vel.y;
+      const velNormal = relVelX * nx + relVelY * ny;
 
-      if (velocityAlongNormal > 0) return;
+      if (velNormal > 0) return;
 
-      const j = -(1 + BOUNCE) * velocityAlongNormal;
-      const impulse = j / 2; // Equal mass for simplicity
-
+      const impulse = -(1 + BOUNCE) * velNormal / 2;
       e1.vel.x += impulse * nx;
       e1.vel.y += impulse * ny;
       e2.vel.x -= impulse * nx;
@@ -109,80 +100,81 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGoal, status }) => {
   const update = () => {
     if (status !== 'PLAYING') return;
 
-    // Movement P1
+    // Player 1 Controls
     if (keys.current['KeyW']) p1.current.vel.y -= PLAYER_SPEED;
     if (keys.current['KeyS']) p1.current.vel.y += PLAYER_SPEED;
     if (keys.current['KeyA']) p1.current.vel.x -= PLAYER_SPEED;
     if (keys.current['KeyD']) p1.current.vel.x += PLAYER_SPEED;
     
-    // Movement P2
-    if (keys.current['ArrowUp']) p2.current.vel.y -= PLAYER_SPEED;
-    if (keys.current['ArrowDown']) p2.current.vel.y += PLAYER_SPEED;
-    if (keys.current['ArrowLeft']) p2.current.vel.x -= PLAYER_SPEED;
-    if (keys.current['ArrowRight']) p2.current.vel.x += PLAYER_SPEED;
+    // Player 2 Controls (AI or Manual)
+    if (isAIMode) {
+      const targetX = ball.current.pos.x;
+      const targetY = ball.current.pos.y;
+      const dx = targetX - p2.current.pos.x;
+      const dy = targetY - p2.current.pos.y;
+      
+      // Simple chasing AI
+      if (Math.abs(dx) > 10) p2.current.vel.x += (dx > 0 ? 1 : -1) * PLAYER_SPEED * 0.8;
+      if (Math.abs(dy) > 10) p2.current.vel.y += (dy > 0 ? 1 : -1) * PLAYER_SPEED * 0.8;
 
-    // Physics Update
+      // Auto-kick if close to ball and ball is in front of AI
+      const distToBall = Math.sqrt(dx * dx + dy * dy);
+      if (distToBall < 50 && ball.current.pos.x < p2.current.pos.x) {
+        keys.current['Enter'] = true;
+        setTimeout(() => keys.current['Enter'] = false, 100);
+      }
+    } else {
+      if (keys.current['ArrowUp']) p2.current.vel.y -= PLAYER_SPEED;
+      if (keys.current['ArrowDown']) p2.current.vel.y += PLAYER_SPEED;
+      if (keys.current['ArrowLeft']) p2.current.vel.x -= PLAYER_SPEED;
+      if (keys.current['ArrowRight']) p2.current.vel.x += PLAYER_SPEED;
+    }
+
+    // Apply Velocity & Friction
     [p1.current, p2.current, ball.current].forEach(ent => {
       ent.pos.x += ent.vel.x;
       ent.pos.y += ent.vel.y;
       ent.vel.x *= FRICTION;
       ent.vel.y *= FRICTION;
 
-      // Wall collisions
+      // Goal Heights
+      const goalTop = (CANVAS_HEIGHT - GOAL_SIZE) / 2;
+      const goalBottom = goalTop + GOAL_SIZE;
+
+      // Bound checks
       if (ent.pos.x < ent.radius) {
-        // Goal check
-        const isGoalHeight = ent.pos.y > (CANVAS_HEIGHT - GOAL_SIZE) / 2 && ent.pos.y < (CANVAS_HEIGHT + GOAL_SIZE) / 2;
-        if (ent === ball.current && isGoalHeight) {
-          onGoal('B');
-          return;
+        if (ent === ball.current && ent.pos.y > goalTop && ent.pos.y < goalBottom) {
+          onGoal('B'); return;
         }
         ent.pos.x = ent.radius;
         ent.vel.x *= -BOUNCE;
       }
       if (ent.pos.x > CANVAS_WIDTH - ent.radius) {
-         // Goal check
-        const isGoalHeight = ent.pos.y > (CANVAS_HEIGHT - GOAL_SIZE) / 2 && ent.pos.y < (CANVAS_HEIGHT + GOAL_SIZE) / 2;
-        if (ent === ball.current && isGoalHeight) {
-          onGoal('A');
-          return;
+        if (ent === ball.current && ent.pos.y > goalTop && ent.pos.y < goalBottom) {
+          onGoal('A'); return;
         }
         ent.pos.x = CANVAS_WIDTH - ent.radius;
         ent.vel.x *= -BOUNCE;
       }
-      if (ent.pos.y < ent.radius) {
-        ent.pos.y = ent.radius;
-        ent.vel.y *= -BOUNCE;
-      }
-      if (ent.pos.y > CANVAS_HEIGHT - ent.radius) {
-        ent.pos.y = CANVAS_HEIGHT - ent.radius;
-        ent.vel.y *= -BOUNCE;
-      }
+      if (ent.pos.y < ent.radius) { ent.pos.y = ent.radius; ent.vel.y *= -BOUNCE; }
+      if (ent.pos.y > CANVAS_HEIGHT - ent.radius) { ent.pos.y = CANVAS_HEIGHT - ent.radius; ent.vel.y *= -BOUNCE; }
     });
 
-    // Collision Player-Ball & Kicking
-    const handleKick = (player: Player) => {
-      const dx = ball.current.pos.x - player.pos.x;
-      const dy = ball.current.pos.y - player.pos.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      const kickKey = player.team === 'A' ? 'Space' : 'Enter';
-      
-      if (distance < player.radius + ball.current.radius + 10) {
-        if (keys.current[kickKey]) {
-          const nx = dx / distance;
-          const ny = dy / distance;
-          ball.current.vel.x = nx * KICK_FORCE;
-          ball.current.vel.y = ny * KICK_FORCE;
-          player.isKicking = true;
-          setTimeout(() => { player.isKicking = false; }, 200);
-        }
+    // Kicking
+    const checkKick = (p: Player, keyCode: string) => {
+      const dx = ball.current.pos.x - p.pos.x;
+      const dy = ball.current.pos.y - p.pos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < p.radius + ball.current.radius + 15 && keys.current[keyCode]) {
+        ball.current.vel.x = (dx / dist) * KICK_FORCE;
+        ball.current.vel.y = (dy / dist) * KICK_FORCE;
+        p.isKicking = true;
+        setTimeout(() => p.isKicking = false, 150);
       }
     };
+    checkKick(p1.current, 'Space');
+    checkKick(p2.current, 'Enter');
 
-    handleKick(p1.current);
-    handleKick(p2.current);
-
-    // Collision Resolving
     resolveCollision(p1.current, ball.current);
     resolveCollision(p2.current, ball.current);
     resolveCollision(p1.current, p2.current);
@@ -190,34 +182,29 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGoal, status }) => {
 
   const draw = (ctx: CanvasRenderingContext2D) => {
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    // Grass
-    ctx.fillStyle = '#10b981';
+    // Pitch
+    ctx.fillStyle = '#065f46';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    // Field Markings
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-    ctx.lineWidth = 4;
-    // Boundary
+    
+    // Lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 2;
     ctx.strokeRect(20, 20, CANVAS_WIDTH - 40, CANVAS_HEIGHT - 40);
-    // Center line
     ctx.beginPath();
-    ctx.moveTo(CANVAS_WIDTH / 2, 20);
-    ctx.lineTo(CANVAS_WIDTH / 2, CANVAS_HEIGHT - 20);
+    ctx.moveTo(CANVAS_WIDTH/2, 20); ctx.lineTo(CANVAS_WIDTH/2, CANVAS_HEIGHT-20);
     ctx.stroke();
-    // Center circle
     ctx.beginPath();
-    ctx.arc(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 60, 0, Math.PI * 2);
+    ctx.arc(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, 60, 0, Math.PI*2);
     ctx.stroke();
 
     // Goals
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 6;
-    const goalY = (CANVAS_HEIGHT - GOAL_SIZE) / 2;
-    // Left Goal
-    ctx.strokeRect(-5, goalY, 25, GOAL_SIZE);
-    // Right Goal
-    ctx.strokeRect(CANVAS_WIDTH - 20, goalY, 25, GOAL_SIZE);
+    const goalTop = (CANVAS_HEIGHT - GOAL_SIZE) / 2;
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillRect(0, goalTop, 20, GOAL_SIZE);
+    ctx.fillRect(CANVAS_WIDTH - 20, goalTop, 20, GOAL_SIZE);
+    ctx.strokeStyle = '#fff';
+    ctx.strokeRect(-5, goalTop, 25, GOAL_SIZE);
+    ctx.strokeRect(CANVAS_WIDTH - 20, goalTop, 25, GOAL_SIZE);
 
     // Entities
     [p1.current, p2.current, ball.current].forEach(ent => {
@@ -226,71 +213,45 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGoal, status }) => {
       
       // Shadow
       ctx.beginPath();
-      ctx.ellipse(0, ent.radius * 0.8, ent.radius * 0.8, ent.radius * 0.3, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.ellipse(0, ent.radius * 0.9, ent.radius * 0.8, ent.radius * 0.3, 0, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.fill();
 
-      // Main shape
+      // Body
       ctx.beginPath();
-      ctx.arc(0, 0, ent.radius, 0, Math.PI * 2);
+      ctx.arc(0, 0, ent.radius, 0, Math.PI*2);
       ctx.fillStyle = ent.color;
+      if ('isKicking' in ent && (ent as Player).isKicking) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#fbbf24';
+      }
       ctx.fill();
       
-      // Player specific rendering
+      // Details
       if ('team' in ent) {
-        const player = ent as Player;
-        // Stroke
-        ctx.strokeStyle = player.isKicking ? '#fbbf24' : '#00000033';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        
-        // Eyes/Face for orientation
-        ctx.fillStyle = 'white';
-        const dirX = player.vel.x === 0 ? (player.team === 'A' ? 1 : -1) : Math.sign(player.vel.x);
-        ctx.fillRect(dirX * 5, -5, 4, 4);
-        ctx.fillRect(dirX * 12, -5, 4, 4);
+         ctx.fillStyle = 'rgba(255,255,255,0.4)';
+         ctx.fillRect(-ent.radius/2, -ent.radius/4, ent.radius, 2);
       } else {
-        // Ball details
-        ctx.strokeStyle = '#1a202c';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        // Simple hexagon patterns
-        ctx.fillStyle = '#1a202c';
-        for(let i=0; i<5; i++) {
-           const angle = (i / 5) * Math.PI * 2;
-           ctx.beginPath();
-           ctx.arc(Math.cos(angle)*5, Math.sin(angle)*5, 2, 0, Math.PI*2);
-           ctx.fill();
-        }
+         ctx.strokeStyle = '#000';
+         ctx.lineWidth = 1;
+         ctx.stroke();
       }
       ctx.restore();
     });
   };
 
   const loop = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    update();
-    draw(ctx);
+    const ctx = canvasRef.current?.getContext('2d');
+    if (ctx) { update(); draw(ctx); }
     requestRef.current = requestAnimationFrame(loop);
   };
 
   useEffect(() => {
     requestRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(requestRef.current!);
-  }, [status]);
+  }, [status, isAIMode]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      width={CANVAS_WIDTH}
-      height={CANVAS_HEIGHT}
-      className="w-full h-auto cursor-none bg-emerald-600"
-    />
-  );
+  return <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="w-full h-auto rounded-b-xl shadow-inner shadow-black/50" />;
 };
 
 export default GameCanvas;

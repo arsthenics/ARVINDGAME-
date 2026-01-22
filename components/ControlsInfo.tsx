@@ -1,41 +1,52 @@
-
 import React from 'react';
 
-const ControlsInfo: React.FC = () => {
+interface Props {
+  isAIMode: boolean;
+}
+
+const ControlsInfo: React.FC<Props> = ({ isAIMode }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-      <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center text-center">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-          <h3 className="text-lg font-bold text-blue-400 uppercase tracking-wide">Player 1 (Blue)</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+      <div className="glass p-5 rounded-2xl flex flex-col items-center">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]"></div>
+          <h3 className="text-sm font-black text-blue-400 uppercase tracking-widest">Player 1 (Human)</h3>
         </div>
         <div className="flex gap-4 items-center">
-          <div className="grid grid-cols-3 gap-1">
-            <div className="p-2 bg-slate-700 rounded text-xs border-b-2 border-slate-900 w-8 h-8 flex items-center justify-center font-bold">W</div>
-            <div className="col-start-1 p-2 bg-slate-700 rounded text-xs border-b-2 border-slate-900 w-8 h-8 flex items-center justify-center font-bold">A</div>
-            <div className="p-2 bg-slate-700 rounded text-xs border-b-2 border-slate-900 w-8 h-8 flex items-center justify-center font-bold">S</div>
-            <div className="p-2 bg-slate-700 rounded text-xs border-b-2 border-slate-900 w-8 h-8 flex items-center justify-center font-bold">D</div>
+          <div className="flex gap-1 font-mono text-xs">
+            <span className="w-7 h-7 flex items-center justify-center bg-slate-800 rounded border border-slate-700">W</span>
+            <span className="w-7 h-7 flex items-center justify-center bg-slate-800 rounded border border-slate-700">A</span>
+            <span className="w-7 h-7 flex items-center justify-center bg-slate-800 rounded border border-slate-700">S</span>
+            <span className="w-7 h-7 flex items-center justify-center bg-slate-800 rounded border border-slate-700">D</span>
           </div>
-          <div className="h-12 w-[1px] bg-slate-700"></div>
-          <div className="px-6 py-2 bg-slate-700 rounded border-b-2 border-slate-900 font-bold text-xs uppercase italic">Space to Kick</div>
+          <div className="w-[1px] h-6 bg-slate-800"></div>
+          <span className="text-[10px] font-bold text-slate-500 uppercase">Space to Kick</span>
         </div>
       </div>
 
-      <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center text-center">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-          <h3 className="text-lg font-bold text-red-400 uppercase tracking-wide">Player 2 (Red)</h3>
+      <div className={`glass p-5 rounded-2xl flex flex-col items-center transition-opacity ${isAIMode ? 'opacity-60' : 'opacity-100'}`}>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]"></div>
+          <h3 className="text-sm font-black text-red-400 uppercase tracking-widest">
+            {isAIMode ? 'Player 2 (AI Active)' : 'Player 2 (Human)'}
+          </h3>
         </div>
-        <div className="flex gap-4 items-center">
-          <div className="grid grid-cols-3 gap-1">
-            <div className="p-2 bg-slate-700 rounded text-xs border-b-2 border-slate-900 w-8 h-8 flex items-center justify-center font-bold"><i className="fa-solid fa-arrow-up text-[10px]"></i></div>
-            <div className="col-start-1 p-2 bg-slate-700 rounded text-xs border-b-2 border-slate-900 w-8 h-8 flex items-center justify-center font-bold"><i className="fa-solid fa-arrow-left text-[10px]"></i></div>
-            <div className="p-2 bg-slate-700 rounded text-xs border-b-2 border-slate-900 w-8 h-8 flex items-center justify-center font-bold"><i className="fa-solid fa-arrow-down text-[10px]"></i></div>
-            <div className="p-2 bg-slate-700 rounded text-xs border-b-2 border-slate-900 w-8 h-8 flex items-center justify-center font-bold"><i className="fa-solid fa-arrow-right text-[10px]"></i></div>
+        {isAIMode ? (
+          <div className="text-[10px] text-slate-400 font-bold uppercase italic animate-pulse">
+            Gemini Opponent is managing field position...
           </div>
-          <div className="h-12 w-[1px] bg-slate-700"></div>
-          <div className="px-6 py-2 bg-slate-700 rounded border-b-2 border-slate-900 font-bold text-xs uppercase italic">Enter to Kick</div>
-        </div>
+        ) : (
+          <div className="flex gap-4 items-center">
+            <div className="flex gap-1 font-mono text-xs text-slate-400">
+              <span className="w-7 h-7 flex items-center justify-center bg-slate-800 rounded border border-slate-700">↑</span>
+              <span className="w-7 h-7 flex items-center justify-center bg-slate-800 rounded border border-slate-700">←</span>
+              <span className="w-7 h-7 flex items-center justify-center bg-slate-800 rounded border border-slate-700">↓</span>
+              <span className="w-7 h-7 flex items-center justify-center bg-slate-800 rounded border border-slate-700">→</span>
+            </div>
+            <div className="w-[1px] h-6 bg-slate-800"></div>
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Enter to Kick</span>
+          </div>
+        )}
       </div>
     </div>
   );
