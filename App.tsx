@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
+
+import React, { useState, useCallback } from 'react';
 import GameCanvas from './components/GameCanvas';
 import Scoreboard from './components/Scoreboard';
 import ControlsInfo from './components/ControlsInfo';
@@ -13,7 +14,7 @@ const App: React.FC = () => {
 
   const generateCommentary = async (event: string) => {
     try {
-      // Use process.env.API_KEY directly as a string for GenAI initialization
+      // Initialize with named parameter as per guidelines
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -22,8 +23,9 @@ const App: React.FC = () => {
         Current Score: Blue ${score.A} - Red ${score.B}.
         Give a very short, 1-sentence explosive reaction.`,
       });
-      // Correctly access text property from response
-      if (response.text) setCommentary(response.text.trim());
+      // Access text directly from response property, not as a function
+      const text = response.text;
+      if (text) setCommentary(text.trim());
     } catch (e) {
       console.error("Gemini Commentary Error:", e);
     }
