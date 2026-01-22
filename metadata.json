@@ -1,0 +1,5 @@
+{
+  "name": "Super Pixel Soccer",
+  "description": "A high-octane 2D football game featuring physics-based ball movement, local multiplayer controls, and a retro arcade aesthetic.",
+  "requestFramePermissions": []
+}
